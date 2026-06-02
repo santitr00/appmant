@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Semana {{ lunes.strftime('%d/%m') }} – {{ domingo.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+
+{# ── Cabecera de navegación ─────────────────────────────────────────────── #}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <a href="{{ url_for('calendario.semana', fecha=semana_anterior.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-left"></i> Semana anterior
+  </a>
+
+  <div class="text-center">
+    <h4 class="mb-0 fw-bold">
+      Semana del {{ lunes.day }} al {{ domingo.day }} de
+      {{ MESES_ES[domingo.month].capitalize() }} {{ domingo.year }}
+    </h4>
+    {% if today >= lunes and today <= domingo %}
+      <span class="badge bg-primary">Semana actual</span>
+    {% endif %}
+  </div>
+
+  <a href="{{ url_for('calendario.semana', fecha=semana_siguiente.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    Semana siguiente <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+{# ── Botones de exportación ─────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a href="{{ url_for('reportes.excel_semana', fecha=lunes.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+  </a>
+  <a href="{{ url_for('reportes.pdf_semana', fecha=lunes.isoformat()) }}"
+     class="btn btn-outline-danger btn-sm">
+    <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+  </a>
+</div>
+
+{# ── Resumen semanal ─────────────────────────────────────────────────────── #}
+{% set total_comp = semana_data | sum(attribute='completadas') %}
+{% set total_no = semana_data | sum(attribute='no_realizadas') %}
+{% set total_pend = semana_data | sum(attribute='pendientes') %}
+{% set total_prog = semana_data | map(attribute='tareas_prog') | map('list') | map('length') | sum %}
+{% set total_exc = semana_data | map(attribute='tareas_exc') | map('list') | map('length') | sum %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center border-success">
+      <div class="card-body py-2">
+        <div class="fs-4 fw-bold text-success">{{ total_comp }}</div>
+        <div class="small text-muted">Completadas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center border-danger">
+      <div class="card-body py-2">
+        <div class="fs-4 fw-bold text-danger">{{ total_no }}</div>
+        <div class="small text-muted">No realizadas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center border-secondary">
+      <div class="card-body py-2">
+        <div class="fs-4 fw-bold text-secondary">{{ total_pend }}</div>
+        <div class="small text-muted">Pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center border-primary">
+      <div class="card-body py-2">
+        <div class="fs-4 fw-bold text-primary">{{ total_prog }}</div>
+        <div class="small text-muted">Total prog.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center border-warning">
+      <div class="card-body py-2">
+        <div class="fs-4 fw-bold text-warning">{{ total_exc }}</div>
+        <div class="small text-muted">Excepcionales</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Días de la semana ───────────────────────────────────────────────────── #}
+{% for dia in semana_data %}
+<div class="card mb-3 {% if dia.fecha == today %}border-primary{% endif %}">
+  <div class="card-header d-flex justify-content-between align-items-center
+              {% if dia.fecha == today %}bg-primary text-white{% endif %}">
+    <div>
+      <strong>{{ dia.dia_nombre }}</strong>
+      <span class="ms-2">{{ dia.fecha.strftime('%d/%m/%Y') }}</span>
+      {% if dia.fecha == today %}
+        <span class="badge bg-light text-dark ms-1">Hoy</span>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      {% if dia.completadas %}
+        <span class="badge bg-success">{{ dia.completadas }} ok</span>
+      {% endif %}
+      {% if dia.no_realizadas %}
+        <span class="badge bg-danger">{{ dia.no_realizadas }} no real.</span>
+      {% endif %}
+      {% if dia.pendientes %}
+        <span class="badge bg-secondary">{{ dia.pendientes }} pend.</span>
+      {% endif %}
+      {% if dia.tareas_exc | length %}
+        <span class="badge bg-warning text-dark">{{ dia.tareas_exc | length }} exc.</span>
+      {% endif %}
+      <a href="{{ url_for('calendario.dia', fecha=dia.fecha.isoformat()) }}"
+         class="btn btn-sm {% if dia.fecha == today %}btn-light{% else %}btn-outline-primary{% endif %}">
+        <i class="bi bi-eye"></i> Ver día
+      </a>
+    </div>
+  </div>
+
+  {% if dia.tareas_prog or dia.tareas_exc %}
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width:8%">Hora</th>
+            <th>Tarea</th>
+            <th style="width:18%">Responsable</th>
+            <th style="width:14%">Estado</th>
+            <th style="width:10%">Tipo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in dia.tareas_prog %}
+          <tr class="{{ 'table-success' if t.estado == 'completada' else ('table-danger' if t.estado == 'no_realizada' else '') }}">
+            <td class="text-muted small">{{ t.horario.strftime('%H:%M') }}</td>
+            <td>
+              {{ t.plantilla.nombre }}
+              {% if t.justificacion %}
+                <i class="bi bi-chat-left-text text-warning ms-1" title="{{ t.justificacion.motivo }}"></i>
+              {% endif %}
+            </td>
+            <td class="small">{{ t.responsable or '—' }}</td>
+            <td>
+              <span class="badge badge-{{ t.estado }}">{{ t.estado.replace('_',' ') }}</span>
+            </td>
+            <td><span class="badge bg-secondary">Rutinaria</span></td>
+          </tr>
+          {% endfor %}
+          {% for t in dia.tareas_exc %}
+          <tr class="{{ 'table-success' if t.estado == 'completada' else 'table-warning' }}">
+            <td class="text-muted small">{{ t.horario.strftime('%H:%M') }}</td>
+            <td>{{ t.descripcion[:70] }}{% if t.descripcion | length > 70 %}…{% endif %}</td>
+            <td class="small">{{ t.responsable or '—' }}</td>
+            <td>
+              <span class="badge badge-{{ t.estado }}">{{ t.estado }}</span>
+            </td>
+            <td>
+              <span class="badge badge-{{ t.prioridad }}">{{ t.prioridad }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card-body text-muted small py-2">Sin tareas generadas para este día.</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% endblock %}

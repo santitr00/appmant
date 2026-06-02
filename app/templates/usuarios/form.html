@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-person"></i> {{ titulo }}</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.nombre.label(class="form-label fw-semibold") }}
+            {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else "")) }}
+            {% for e in form.nombre.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              {{ form.dni.label(class="form-label fw-semibold") }}
+              {{ form.dni(class="form-control" + (" is-invalid" if form.dni.errors else "")) }}
+              {% for e in form.dni.errors %}
+                <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+              <div class="form-text">Se usará para iniciar sesión.</div>
+            </div>
+            <div class="col-sm-6">
+              {{ form.email.label(class="form-label fw-semibold") }}
+              {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""),
+                            placeholder="Opcional") }}
+              {% for e in form.email.errors %}
+                <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.password.label(class="form-label fw-semibold") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
+                             placeholder="{{ 'Dejar vacío para no cambiar' if usuario is defined else 'Contraseña' }}") }}
+            {% for e in form.password.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+            {% if usuario is defined %}
+              <div class="form-text">Dejar vacío para mantener la contraseña actual.</div>
+            {% endif %}
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+              {{ form.rol.label(class="form-label fw-semibold") }}
+              {{ form.rol(class="form-select") }}
+            </div>
+            <div class="col-sm-6 d-flex align-items-end pb-1">
+              <div class="form-check">
+                {{ form.activo(class="form-check-input") }}
+                {{ form.activo.label(class="form-check-label") }}
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

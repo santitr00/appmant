@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block title %}Calendario – {{ fecha.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+
+{# ── Cabecera de navegación de fecha ─────────────────────────────────────── #}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <a href="{{ url_for('calendario.dia', fecha=fecha_anterior.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-left"></i> Anterior
+  </a>
+
+  <div class="text-center">
+    <h4 class="mb-0 fw-bold">{{ fecha_label }}</h4>
+    {% if fecha == today %}
+      <span class="badge bg-primary">Hoy</span>
+    {% endif %}
+  </div>
+
+  <a href="{{ url_for('calendario.dia', fecha=fecha_siguiente.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    Siguiente <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+{# ── Acciones rápidas ─────────────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <form method="POST" action="{{ url_for('tareas.generar') }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="fecha" value="{{ fecha.isoformat() }}">
+    <button type="submit" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-arrow-clockwise"></i> Regenerar tareas del día
+    </button>
+  </form>
+  <a href="{{ url_for('tareas.nueva_excepcional', fecha=fecha.isoformat()) }}"
+     class="btn btn-outline-success btn-sm">
+    <i class="bi bi-plus-circle"></i> Agregar tarea excepcional
+  </a>
+  <a href="{{ url_for('reportes.excel_dia', fecha=fecha.isoformat()) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-file-earmark-excel"></i> Excel
+  </a>
+  <a href="{{ url_for('reportes.pdf_dia', fecha=fecha.isoformat()) }}"
+     class="btn btn-outline-danger btn-sm">
+    <i class="bi bi-file-earmark-pdf"></i> PDF
+  </a>
+</div>
+
+{# ── Tareas programadas ───────────────────────────────────────────────────── #}
+<h5 class="mb-3"><i class="bi bi-list-check"></i> Tareas rutinarias</h5>
+
+{% if tareas_prog %}
+  <div class="row g-3 mb-4">
+  {% for t in tareas_prog %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card tarea-card h-100 border-start border-4
+                  {% if t.estado == 'completada' %}border-success tarea-completada
+                  {% elif t.estado == 'no_realizada' %}border-danger
+                  {% else %}border-secondary{% endif %}">
+        <div class="card-body pb-2">
+
+          {# Nombre + horario #}
+          <div class="d-flex justify-content-between align-items-start">
+            <h6 class="card-title mb-1">{{ t.plantilla.nombre }}</h6>
+            <span class="text-muted small">{{ t.horario.strftime('%H:%M') }}</span>
+          </div>
+
+          {% if t.descripcion %}
+            <p class="text-muted small mb-2">{{ t.descripcion }}</p>
+          {% endif %}
+
+          {# Asignado #}
+          <p class="mb-2 small d-flex align-items-center gap-2">
+            <span>
+              <i class="bi bi-person"></i>
+              <span class="responsable-label-prog-{{ t.id }}">{{ t.responsable or '— Sin asignar —' }}</span>
+            </span>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    onclick="abrirAsignar({{ t.id }}, 'programada', {{ t.empleados | map(attribute='id') | list | tojson }})"
+                    title="Asignar empleados">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+          </p>
+
+          {# Estado badge #}
+          <span class="badge badge-{{ t.estado }} mb-2">{{ t.estado.replace('_', ' ') }}</span>
+
+          {# Justificación existente #}
+          {% if t.justificacion %}
+            <div class="alert alert-warning py-1 px-2 small mb-2">
+              <i class="bi bi-chat-left-text"></i>
+              <em>{{ t.justificacion.motivo }}</em>
+              {% if t.justificacion.tarea_excepcional %}
+                <br><span class="text-muted">
+                  <i class="bi bi-link-45deg"></i>
+                  Vinculada: {{ t.justificacion.tarea_excepcional.descripcion[:40] }}
+                </span>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        {# Botones de acción #}
+        <div class="card-footer bg-transparent pt-0 d-flex gap-1 flex-wrap">
+          {% if t.estado != 'completada' %}
+            <button class="btn btn-success btn-sm btn-estado"
+                    data-id="{{ t.id }}" data-tipo="programada" data-estado="completada">
+              <i class="bi bi-check-lg"></i> Completada
+            </button>
+          {% endif %}
+          {% if t.estado != 'no_realizada' %}
+            <button class="btn btn-danger btn-sm btn-estado"
+                    data-id="{{ t.id }}" data-tipo="programada" data-estado="no_realizada">
+              <i class="bi bi-x-lg"></i> No realizada
+            </button>
+          {% endif %}
+          {% if t.estado == 'no_realizada' or t.estado == 'pendiente' or t.justificacion %}
+            <button class="btn btn-outline-warning btn-sm"
+                    onclick="abrirJustificacion({{ t.id }}, {{ t.justificacion.motivo | tojson if t.justificacion else 'null' }}, {{ t.justificacion.tarea_excepcional_id if t.justificacion else 'null' }})">
+              <i class="bi bi-chat-left-dots"></i>
+              {{ 'Editar justificación' if t.justificacion else 'Justificar' }}
+            </button>
+          {% endif %}
+          {% if t.estado != 'pendiente' %}
+            <button class="btn btn-outline-secondary btn-sm btn-estado"
+                    data-id="{{ t.id }}" data-tipo="programada" data-estado="pendiente">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-light border mb-4">
+    No hay tareas rutinarias generadas para este día.
+  </div>
+{% endif %}
+
+{# ── Tareas excepcionales ────────────────────────────────────────────────── #}
+<h5 class="mb-3"><i class="bi bi-exclamation-triangle"></i> Tareas excepcionales</h5>
+
+{% if tareas_exc %}
+  <div class="row g-3 mb-4">
+  {% for t in tareas_exc %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card tarea-card h-100 border-start border-4
+                  {% if t.estado == 'completada' %}border-success tarea-completada
+                  {% else %}border-warning{% endif %}">
+        <div class="card-body pb-2">
+          <div class="d-flex justify-content-between align-items-start">
+            <h6 class="card-title mb-1">{{ t.descripcion[:60] }}{% if t.descripcion|length > 60 %}…{% endif %}</h6>
+            <span class="text-muted small">{{ t.horario.strftime('%H:%M') }}</span>
+          </div>
+
+          <div class="d-flex gap-1 mb-2">
+            <span class="badge badge-{{ t.prioridad }}">{{ t.prioridad }}</span>
+            <span class="badge badge-{{ t.estado }}">{{ t.estado }}</span>
+          </div>
+
+          <p class="mb-1 small d-flex align-items-center gap-2">
+            <span>
+              <i class="bi bi-person"></i>
+              <span class="responsable-label-exc-{{ t.id }}">{{ t.responsable or '— Sin asignar —' }}</span>
+            </span>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    onclick="abrirAsignar({{ t.id }}, 'excepcional', {{ t.empleados | map(attribute='id') | list | tojson }})"
+                    title="Asignar empleados">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+          </p>
+          <p class="mb-0 small text-muted">
+            <i class="bi bi-person-plus"></i>
+            Creada por {{ t.creador.nombre }}
+          </p>
+        </div>
+
+        <div class="card-footer bg-transparent pt-0 d-flex gap-1 flex-wrap">
+          {% if t.estado != 'completada' %}
+            <button class="btn btn-success btn-sm btn-estado"
+                    data-id="{{ t.id }}" data-tipo="excepcional" data-estado="completada">
+              <i class="bi bi-check-lg"></i> Completada
+            </button>
+          {% else %}
+            <button class="btn btn-outline-secondary btn-sm btn-estado"
+                    data-id="{{ t.id }}" data-tipo="excepcional" data-estado="pendiente">
+              <i class="bi bi-arrow-counterclockwise"></i> Reabrir
+            </button>
+          {% endif %}
+          <a href="{{ url_for('tareas.editar_excepcional', id=t.id) }}"
+             class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <form method="POST" action="{{ url_for('tareas.eliminar_excepcional', id=t.id) }}"
+                class="d-inline"
+                onsubmit="return confirm('¿Eliminar esta tarea excepcional?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-light border">
+    No hay tareas excepcionales para este día.
+  </div>
+{% endif %}
+
+{# ── Modal asignar empleados ──────────────────────────────────────────────── #}
+<div class="modal fade" id="modalAsignar" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-check"></i> Asignar empleados</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% if empleados_lista %}
+          <div id="empCheckboxes" style="max-height:220px; overflow-y:auto;">
+            {% for emp in empleados_lista %}
+            <div class="form-check">
+              <input class="form-check-input emp-cb" type="checkbox"
+                     value="{{ emp.id }}" id="empCb{{ emp.id }}">
+              <label class="form-check-label" for="empCb{{ emp.id }}">{{ emp.nombre }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mt-2">
+            <button type="button" class="btn btn-link btn-sm p-0 text-secondary"
+                    onclick="document.querySelectorAll('.emp-cb').forEach(c=>c.checked=false)">
+              Desmarcar todos
+            </button>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No hay empleados registrados en este barrio.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarAsignar">
+          <i class="bi bi-check-lg"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Modal justificación ─────────────────────────────────────────────────── #}
+<div class="modal fade" id="modalJustificacion" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-chat-left-dots"></i> Justificación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Motivo</label>
+          <textarea id="motivoText" class="form-control" rows="4"
+                    placeholder="Ingresá el motivo..."></textarea>
+        </div>
+        <div class="mb-2" id="excSelectWrapper">
+          <label class="form-label fw-semibold">Vincular con tarea excepcional del día
+            <span class="text-muted fw-normal">(opcional)</span>
+          </label>
+          <select id="excSelect" class="form-select">
+            <option value="">— Sin vincular —</option>
+          </select>
+          <div class="form-text">Si la rutinaria no se realizó porque se reemplazó por una tarea excepcional, podés indicarlo aquí.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" id="btnGuardarJust">
+          <i class="bi bi-check-lg"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CSRF = "{{ csrf_token() }}";
+let asignarTareaId = null;
+let asignarTipo = "programada";
+const modalAsignar = new bootstrap.Modal(document.getElementById("modalAsignar"));
+
+function abrirAsignar(id, tipo, empleadosActuales) {
+  asignarTareaId = id;
+  asignarTipo = tipo;
+  document.querySelectorAll(".emp-cb").forEach(cb => {
+    cb.checked = empleadosActuales.includes(parseInt(cb.value));
+  });
+  modalAsignar.show();
+}
+
+document.getElementById("btnGuardarAsignar").addEventListener("click", async () => {
+  const ids = [...document.querySelectorAll(".emp-cb:checked")].map(cb => cb.value);
+
+  const url = asignarTipo === "programada"
+    ? `/tareas/programada/${asignarTareaId}/asignar`
+    : `/tareas/excepcional/${asignarTareaId}/asignar`;
+
+  const fd = new FormData();
+  fd.append("csrf_token", CSRF);
+  ids.forEach(id => fd.append("empleado_ids", id));
+
+  const res = await fetch(url, { method: "POST", body: fd });
+  if (res.ok) {
+    const data = await res.json();
+    const selector = asignarTipo === "programada"
+      ? `.responsable-label-prog-${asignarTareaId}`
+      : `.responsable-label-exc-${asignarTareaId}`;
+    const label = document.querySelector(selector);
+    if (label) label.textContent = data.responsable || "— Sin asignar —";
+    modalAsignar.hide();
+  } else {
+    alert("Error al guardar la asignación.");
+  }
+});
+let justTareaId = null;
+const modalJust = new bootstrap.Modal(document.getElementById("modalJustificacion"));
+
+// Lista de tareas excepcionales del día para el selector del modal
+const TAREAS_EXC_DIA = [
+  {% for t in tareas_exc %}
+  { id: {{ t.id }}, desc: {{ t.descripcion[:60] | tojson }} },
+  {% endfor %}
+];
+
+// ── Marcar estado ──────────────────────────────────────────────────────────
+document.querySelectorAll(".btn-estado").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const id = btn.dataset.id;
+    const tipo = btn.dataset.tipo;
+    const estado = btn.dataset.estado;
+
+    const url = tipo === "programada"
+      ? `/tareas/programada/${id}/estado`
+      : `/tareas/excepcional/${id}/estado`;
+
+    const fd = new FormData();
+    fd.append("csrf_token", CSRF);
+    fd.append("estado", estado);
+
+    const res = await fetch(url, { method: "POST", body: fd });
+    if (res.ok) {
+      location.reload();
+    } else {
+      alert("Error al actualizar el estado.");
+    }
+  });
+});
+
+// ── Justificación ──────────────────────────────────────────────────────────
+function abrirJustificacion(id, motivoActual, excIdActual) {
+  justTareaId = id;
+  document.getElementById("motivoText").value = motivoActual || "";
+
+  // Poblar el selector con las excepcionales del día
+  const sel = document.getElementById("excSelect");
+  sel.innerHTML = '<option value="">— Sin vincular —</option>';
+  TAREAS_EXC_DIA.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.desc;
+    if (excIdActual && t.id === excIdActual) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  // Ocultar el selector si no hay excepcionales
+  document.getElementById("excSelectWrapper").style.display =
+    TAREAS_EXC_DIA.length > 0 ? "" : "none";
+
+  modalJust.show();
+}
+
+document.getElementById("btnGuardarJust").addEventListener("click", async () => {
+  const motivo = document.getElementById("motivoText").value.trim();
+  if (!motivo) { alert("El motivo no puede estar vacío."); return; }
+
+  const excId = document.getElementById("excSelect").value;
+
+  const fd = new FormData();
+  fd.append("csrf_token", CSRF);
+  fd.append("motivo", motivo);
+  if (excId) fd.append("tarea_excepcional_id", excId);
+
+  const res = await fetch(`/tareas/programada/${justTareaId}/justificar`,
+                          { method: "POST", body: fd });
+  if (res.ok) {
+    modalJust.hide();
+    location.reload();
+  } else {
+    alert("Error al guardar la justificación.");
+  }
+});
+</script>
+{% endblock %}

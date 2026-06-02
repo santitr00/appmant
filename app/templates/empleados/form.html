@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-person-badge"></i> {{ titulo }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.nombre.label(class="form-label fw-semibold") }}
+            {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else ""),
+                          placeholder="Ej: Juan Pérez") }}
+            {% for e in form.nombre.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-4 form-check">
+            {{ form.activo(class="form-check-input") }}
+            {{ form.activo.label(class="form-check-label") }}
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('empleados.index') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

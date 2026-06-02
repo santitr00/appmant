@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-task"></i> {{ titulo }}</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.nombre.label(class="form-label fw-semibold") }}
+            {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else "")) }}
+            {% for e in form.nombre.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.descripcion.label(class="form-label fw-semibold") }}
+            {{ form.descripcion(class="form-control", rows=3) }}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              {{ form.frecuencia.label(class="form-label fw-semibold") }}
+              {{ form.frecuencia(class="form-select", id="frecuenciaSelect") }}
+            </div>
+            <div class="col-sm-6" id="diaSemanaWrapper">
+              {{ form.dia_semana.label(class="form-label fw-semibold") }}
+              {{ form.dia_semana(class="form-select" + (" is-invalid" if form.dia_semana.errors else "")) }}
+              {% for e in form.dia_semana.errors %}
+                <div class="invalid-feedback">{{ e }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.horario.label(class="form-label fw-semibold") }}
+            {{ form.horario(class="form-control" + (" is-invalid" if form.horario.errors else "")) }}
+            {% for e in form.horario.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.empleado_id.label(class="form-label fw-semibold") }}
+            {{ form.empleado_id(class="form-select") }}
+            <div class="form-text">Se asignará automáticamente al generar las tareas del día.</div>
+          </div>
+
+          <div class="mb-4 form-check">
+            {{ form.activa(class="form-check-input") }}
+            {{ form.activa.label(class="form-check-label") }}
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('plantillas.index') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const sel = document.getElementById("frecuenciaSelect");
+  const wrapper = document.getElementById("diaSemanaWrapper");
+
+  function toggleDia() {
+    wrapper.style.display = sel.value === "semanal" ? "" : "none";
+  }
+  sel.addEventListener("change", toggleDia);
+  toggleDia();
+</script>
+{% endblock %}

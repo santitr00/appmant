@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  @page { size: A4 portrait; margin: 1.5cm; }
+  body  { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #222; }
+  h1    { font-size: 14px; color: #2563eb; margin-bottom: 2px; }
+  h2    { font-size: 11px; color: #555; font-weight: normal; margin-top: 0; }
+  .barrio { font-size: 11px; color: #2563eb; font-weight: bold; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th    { background: #2563eb; color: #fff; padding: 4px 5px; text-align: center; font-size: 8px; }
+  td    { padding: 3px 5px; border-bottom: 1px solid #e0e0e0; }
+  td.left { text-align: left; }
+  td.center { text-align: center; }
+  tr:nth-child(even) td { background: #f4f6fb; }
+  .ok   { color: #198754; font-weight: bold; text-align: center; }
+  .mal  { color: #dc3545; font-weight: bold; text-align: center; }
+  .pend { color: #6c757d; text-align: center; }
+  .section-title { font-size: 11px; font-weight: bold; margin-top: 14px; color: #2563eb;
+                   border-bottom: 1px solid #2563eb; padding-bottom: 2px; }
+  .day-title { font-size: 10px; font-weight: bold; background: #e8f0fe;
+               padding: 3px 5px; margin-top: 8px; margin-bottom: 0; }
+  .totals td { font-weight: bold; background: #e8f0fe !important; }
+  .badge-completada   { color: #198754; font-weight: bold; }
+  .badge-no_realizada { color: #dc3545; font-weight: bold; }
+  .badge-pendiente    { color: #6c757d; }
+  .tipo-exc { color: #e67e22; }
+  .footer { margin-top: 14px; font-size: 8px; color: #999; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="barrio">&#127751; {{ barrio.nombre }}</div>
+<h1>Reporte semanal de tareas</h1>
+<h2>{{ lunes.strftime('%d/%m/%Y') }} al {{ domingo.strftime('%d/%m/%Y') }}</h2>
+
+<!-- ── Resumen por día ─────────────────────────────────── -->
+<div class="section-title">Resumen por día</div>
+<table>
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Día</th>
+      <th>Completadas</th>
+      <th>No realizadas</th>
+      <th>Pendientes</th>
+      <th>Total prog.</th>
+      <th>Excepcionales</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set ns = namespace(tc=0, tn=0, tp=0, tprog=0, texc=0) %}
+    {% for d in dias %}
+    <tr>
+      <td class="left">{{ d.fecha_str }}</td>
+      <td class="left">{{ d.dia_nombre }}</td>
+      <td class="ok">{{ d.completadas if d.completadas else '—' }}</td>
+      <td class="mal">{{ d.no_realizadas if d.no_realizadas else '—' }}</td>
+      <td class="pend">{{ d.pendientes if d.pendientes else '—' }}</td>
+      <td class="center">{{ d.total_prog if d.total_prog else '—' }}</td>
+      <td class="center">{{ d.excepcionales if d.excepcionales else '—' }}</td>
+    </tr>
+    {% set ns.tc = ns.tc + d.completadas %}
+    {% set ns.tn = ns.tn + d.no_realizadas %}
+    {% set ns.tp = ns.tp + d.pendientes %}
+    {% set ns.tprog = ns.tprog + d.total_prog %}
+    {% set ns.texc = ns.texc + d.excepcionales %}
+    {% endfor %}
+    <tr class="totals">
+      <td class="left" colspan="2">TOTALES</td>
+      <td class="ok">{{ ns.tc }}</td>
+      <td class="mal">{{ ns.tn }}</td>
+      <td class="pend">{{ ns.tp }}</td>
+      <td class="center">{{ ns.tprog }}</td>
+      <td class="center">{{ ns.texc }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ── Detalle de tareas por día ──────────────────────── -->
+<div class="section-title">Detalle de tareas</div>
+
+{% for d in dias %}
+{% if d.tareas_prog or d.tareas_exc %}
+<div class="day-title">{{ d.dia_nombre }} {{ d.fecha_str }}</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:7%">Hora</th>
+      <th style="width:32%">Tarea / Descripción</th>
+      <th style="width:10%">Tipo</th>
+      <th style="width:22%">Responsable</th>
+      <th style="width:12%">Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in d.tareas_prog %}
+    <tr>
+      <td class="center">{{ t.horario.strftime('%H:%M') }}</td>
+      <td class="left">{{ t.plantilla.nombre }}</td>
+      <td class="center">Rutinaria</td>
+      <td class="left">{{ t.responsable or '—' }}</td>
+      <td class="badge-{{ t.estado }}">{{ t.estado.replace('_',' ') }}</td>
+    </tr>
+    {% endfor %}
+    {% for t in d.tareas_exc %}
+    <tr>
+      <td class="center">{{ t.horario.strftime('%H:%M') }}</td>
+      <td class="left tipo-exc">{{ t.descripcion[:60] }}{% if t.descripcion | length > 60 %}…{% endif %}</td>
+      <td class="center">Exc. {{ t.prioridad }}</td>
+      <td class="left">{{ t.responsable or '—' }}</td>
+      <td class="badge-{{ t.estado }}">{{ t.estado }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endfor %}
+
+<div class="footer">
+  Generado — semana del {{ lunes.strftime('%d/%m/%Y') }} — {{ barrio.nombre }}
+</div>
+
+</body>
+</html>

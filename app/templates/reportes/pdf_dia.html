@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  @page { size: A4 landscape; margin: 1.5cm; }
+  body  { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #222; }
+  h1    { font-size: 14px; color: #2563eb; margin-bottom: 2px; }
+  h2    { font-size: 11px; color: #555; font-weight: normal; margin-top: 0; }
+  .barrio { font-size: 11px; color: #2563eb; font-weight: bold; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th    { background: #2563eb; color: #fff; padding: 5px 6px; text-align: left; font-size: 9px; }
+  td    { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f4f6fb; }
+  .badge-completada   { color: #198754; font-weight: bold; }
+  .badge-no_realizada { color: #dc3545; font-weight: bold; }
+  .badge-pendiente    { color: #6c757d; }
+  .tipo-exc { color: #e67e22; }
+  .just-text { font-style: italic; color: #555; }
+  .footer { margin-top: 14px; font-size: 8px; color: #999; text-align: right; }
+  .section-title { font-size: 11px; font-weight: bold; margin-top: 14px; color: #2563eb;
+                   border-bottom: 1px solid #2563eb; padding-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div class="barrio"><span>&#127751; {{ barrio.nombre }}</span></div>
+<h1>Reporte diario de tareas</h1>
+<h2>{{ fecha_label }}</h2>
+
+{% if tareas_prog %}
+<div class="section-title">Tareas rutinarias</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:8%">Horario</th>
+      <th style="width:28%">Tarea</th>
+      <th style="width:18%">Asignado a</th>
+      <th style="width:12%">Estado</th>
+      <th>Justificación</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tareas_prog %}
+    <tr>
+      <td>{{ t.horario.strftime('%H:%M') }}</td>
+      <td>{{ t.plantilla.nombre }}</td>
+      <td>{{ t.asignado_a or '—' }}</td>
+      <td class="badge-{{ t.estado }}">{{ t.estado.replace('_',' ') }}</td>
+      <td>
+        {% if t.justificacion %}
+          <span class="just-text">{{ t.justificacion.motivo }}</span>
+          {% if t.justificacion.tarea_excepcional %}
+            <br/><small>Vinc.: {{ t.justificacion.tarea_excepcional.descripcion[:50] }}</small>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if tareas_exc %}
+<div class="section-title">Tareas excepcionales</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:8%">Horario</th>
+      <th style="width:28%">Descripción</th>
+      <th style="width:10%">Prioridad</th>
+      <th style="width:18%">Asignado a</th>
+      <th style="width:10%">Estado</th>
+      <th>Creada por</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tareas_exc %}
+    <tr>
+      <td>{{ t.horario.strftime('%H:%M') }}</td>
+      <td class="tipo-exc">{{ t.descripcion }}</td>
+      <td>{{ t.prioridad }}</td>
+      <td>{{ t.asignado_a or '—' }}</td>
+      <td class="badge-{{ t.estado }}">{{ t.estado }}</td>
+      <td>{{ t.creador.nombre }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if not tareas_prog and not tareas_exc %}
+  <p style="color:#999;margin-top:20px;">No hay tareas registradas para este día.</p>
+{% endif %}
+
+<div class="footer">
+  Generado el {{ fecha.strftime('%d/%m/%Y') }} — {{ barrio.nombre }}
+</div>
+
+</body>
+</html>
