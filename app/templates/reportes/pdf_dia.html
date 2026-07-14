@@ -93,6 +93,11 @@
   <p style="color:#999;margin-top:20px;">No hay tareas registradas para este día.</p>
 {% endif %}
 
+{% if nota %}
+<div class="section-title">Notas</div>
+<p style="margin-top:6px; white-space:pre-wrap;">{{ nota }}</p>
+{% endif %}
+
 <div class="footer">
   Generado el {{ fecha.strftime('%d/%m/%Y') }} — {{ barrio.nombre }}
 </div>

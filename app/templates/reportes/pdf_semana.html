@@ -82,8 +82,9 @@
 <div class="section-title">Detalle de tareas</div>
 
 {% for d in dias %}
-{% if d.tareas_prog or d.tareas_exc %}
+{% if d.tareas_prog or d.tareas_exc or d.nota %}
 <div class="day-title">{{ d.dia_nombre }} {{ d.fecha_str }}</div>
+{% if d.tareas_prog or d.tareas_exc %}
 <table>
   <thead>
     <tr>
@@ -115,6 +116,10 @@
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
+{% if d.nota %}
+<p style="margin:4px 0 0 0; font-style:italic; color:#555; white-space:pre-wrap;"><strong>Notas:</strong> {{ d.nota }}</p>
+{% endif %}
 {% endif %}
 {% endfor %}
 

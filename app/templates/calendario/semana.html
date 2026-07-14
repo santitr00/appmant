@@ -170,6 +170,12 @@
   {% else %}
   <div class="card-body text-muted small py-2">Sin tareas generadas para este día.</div>
   {% endif %}
+
+  {% if dia.nota %}
+  <div class="card-footer bg-transparent py-2 small text-muted" style="white-space:pre-wrap;">
+    <i class="bi bi-sticky"></i> <strong>Notas:</strong> {{ dia.nota }}
+  </div>
+  {% endif %}
 </div>
 {% endfor %}
 

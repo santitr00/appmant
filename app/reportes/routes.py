@@ -17,7 +17,7 @@ from flask import make_response, render_template, request
 from flask_login import current_user, login_required
 
 from app.calendario.routes import DIAS_ES, MESES_ES, fecha_es
-from app.models import PlantillaTarea, TareaExcepcional, TareaProgramada
+from app.models import NotaDiaria, PlantillaTarea, TareaExcepcional, TareaProgramada
 from app.reportes import reportes_bp
 
 
@@ -59,6 +59,12 @@ def _tareas_del_dia(barrio_id, fecha):
     return prog, exc
 
 
+def _nota_del_dia(barrio_id, fecha):
+    """Devuelve el contenido de la nota del día o None si no hay."""
+    nota = NotaDiaria.query.filter_by(barrio_id=barrio_id, fecha=fecha).first()
+    return nota.contenido if nota else None
+
+
 def _lunes_de(fecha: date) -> date:
     return fecha - timedelta(days=fecha.weekday())
 
@@ -79,6 +85,7 @@ def excel_dia():
 
     fecha = _parse_fecha()
     prog, exc = _tareas_del_dia(current_user.barrio_id, fecha)
+    nota = _nota_del_dia(current_user.barrio_id, fecha)
 
     wb = Workbook()
     ws = wb.active
@@ -119,6 +126,14 @@ def excel_dia():
 
     ws.cell(row=row + 1, column=1, value="Total tareas:").font = Font(bold=True)
     ws.cell(row=row + 1, column=2, value=len(prog) + len(exc))
+
+    if nota:
+        nrow = row + 3
+        c = ws.cell(row=nrow, column=1, value="Notas")
+        c.font = Font(bold=True, size=12, color="2563EB")
+        ws.merge_cells(start_row=nrow + 1, start_column=1, end_row=nrow + 1, end_column=6)
+        nc = ws.cell(row=nrow + 1, column=1, value=nota)
+        nc.alignment = Alignment(wrap_text=True, vertical="top")
 
     for i, w in enumerate([10, 42, 18, 22, 16, 42], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
@@ -233,6 +248,13 @@ def excel_semana():
             ws2.cell(row=r, column=4, value=f"Excepcional ({t.prioridad})")
             ws2.cell(row=r, column=5, value=t.responsable or "")
             ws2.cell(row=r, column=6, value=t.estado)
+            r += 1
+        nota = _nota_del_dia(barrio_id, d)
+        if nota:
+            ws2.cell(row=r, column=1, value=d.strftime("%d/%m/%Y"))
+            ws2.cell(row=r, column=2, value=DIAS_ES[d.weekday()])
+            nc = ws2.cell(row=r, column=3, value=f"Nota del día: {nota}")
+            nc.font = Font(italic=True, color="2563EB")
             r += 1
 
     for i, w in enumerate([14, 12, 40, 18, 22, 14], 1):
@@ -356,6 +378,13 @@ def excel_mes():
             ws2.cell(row=r, column=5, value=t.responsable or "")
             ws2.cell(row=r, column=6, value=t.estado)
             r += 1
+        nota = _nota_del_dia(barrio_id, fecha)
+        if nota:
+            ws2.cell(row=r, column=1, value=fecha.strftime("%d/%m/%Y"))
+            ws2.cell(row=r, column=2, value=DIAS_ES[fecha.weekday()])
+            nc = ws2.cell(row=r, column=3, value=f"Nota del día: {nota}")
+            nc.font = Font(italic=True, color="2563EB")
+            r += 1
 
     for i, w in enumerate([14, 12, 40, 18, 22, 14], 1):
         ws2.column_dimensions[get_column_letter(i)].width = w
@@ -402,6 +431,7 @@ def pdf_dia():
 
     fecha = _parse_fecha()
     prog, exc = _tareas_del_dia(current_user.barrio_id, fecha)
+    nota = _nota_del_dia(current_user.barrio_id, fecha)
 
     html = render_template(
         "reportes/pdf_dia.html",
@@ -409,6 +439,7 @@ def pdf_dia():
         fecha_label=fecha_es(fecha),
         tareas_prog=prog,
         tareas_exc=exc,
+        nota=nota,
         barrio=current_user.barrio,
     )
     buf = io.BytesIO()
@@ -450,6 +481,7 @@ def pdf_semana():
             "excepcionales": len(exc),
             "tareas_prog": prog,
             "tareas_exc": exc,
+            "nota": _nota_del_dia(barrio_id, d),
         })
 
     html = render_template(
@@ -500,6 +532,7 @@ def pdf_mes():
             "excepcionales": len(exc),
             "tareas_prog": prog,
             "tareas_exc": exc,
+            "nota": _nota_del_dia(barrio_id, fecha),
         })
         for t in prog:
             if t.justificacion:

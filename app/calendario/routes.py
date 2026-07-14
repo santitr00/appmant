@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from flask import render_template, request, jsonify, url_for
 from flask_login import login_required, current_user
 
-from app.models import TareaProgramada, TareaExcepcional, PlantillaTarea, Empleado
+from app import db
+from app.models import TareaProgramada, TareaExcepcional, PlantillaTarea, Empleado, NotaDiaria
 from app.tareas.generador import generar_tareas_para_fecha
 from app.calendario import calendario_bp
 
@@ -63,6 +64,10 @@ def dia():
         .all()
     )
 
+    nota = NotaDiaria.query.filter_by(
+        barrio_id=current_user.barrio_id, fecha=fecha
+    ).first()
+
     return render_template(
         "calendario/dia.html",
         fecha=fecha,
@@ -73,7 +78,47 @@ def dia():
         fecha_anterior=fecha_anterior,
         fecha_siguiente=fecha_siguiente,
         empleados_lista=empleados_lista,
+        nota=nota,
     )
+
+
+# ── Notas del día ─────────────────────────────────────────────────────────────
+
+@calendario_bp.route("/nota", methods=["POST"])
+@login_required
+def guardar_nota():
+    fecha_str = request.form.get("fecha")
+    try:
+        fecha = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except ValueError:
+        return jsonify({"error": "Fecha inválida"}), 400
+
+    contenido = request.form.get("contenido", "").strip()
+
+    nota = NotaDiaria.query.filter_by(
+        barrio_id=current_user.barrio_id, fecha=fecha
+    ).first()
+
+    if not contenido:
+        # Sin contenido: eliminar la nota existente si la hubiera.
+        if nota:
+            db.session.delete(nota)
+            db.session.commit()
+        return jsonify({"ok": True, "contenido": ""})
+
+    if nota:
+        nota.contenido = contenido
+    else:
+        nota = NotaDiaria(
+            barrio_id=current_user.barrio_id,
+            fecha=fecha,
+            contenido=contenido,
+            creada_por=current_user.id,
+        )
+        db.session.add(nota)
+
+    db.session.commit()
+    return jsonify({"ok": True, "contenido": nota.contenido})
 
 
 # ── Vista semanal ─────────────────────────────────────────────────────────────
@@ -111,12 +156,16 @@ def semana():
             .order_by(TareaExcepcional.horario)
             .all()
         )
+        nota = NotaDiaria.query.filter_by(
+            barrio_id=current_user.barrio_id, fecha=d
+        ).first()
         semana_data.append({
             "fecha": d,
             "fecha_label": fecha_es(d),
             "dia_nombre": DIAS_ES[d.weekday()],
             "tareas_prog": prog,
             "tareas_exc": exc,
+            "nota": nota.contenido if nota else None,
             "completadas": sum(1 for t in prog if t.estado == "completada"),
             "no_realizadas": sum(1 for t in prog if t.estado == "no_realizada"),
             "pendientes": sum(1 for t in prog if t.estado == "pendiente"),

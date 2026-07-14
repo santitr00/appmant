@@ -191,6 +191,29 @@ class TareaExcepcional(db.Model):
         return f"<TareaExcepcional {self.descripcion[:30]} {self.fecha}>"
 
 
+class NotaDiaria(db.Model):
+    __tablename__ = "notas_diarias"
+    __table_args__ = (
+        db.UniqueConstraint("barrio_id", "fecha", name="uq_nota_barrio_fecha"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    barrio_id = db.Column(db.Integer, db.ForeignKey("barrios.id"), nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    contenido = db.Column(db.Text, nullable=False)
+    creada_por = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    barrio = db.relationship("Barrio")
+    autor = db.relationship("Usuario", foreign_keys=[creada_por])
+
+    def __repr__(self):
+        return f"<NotaDiaria barrio={self.barrio_id} {self.fecha}>"
+
+
 class Justificacion(db.Model):
     __tablename__ = "justificaciones"
 
