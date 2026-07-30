@@ -9,6 +9,17 @@
         <h5 class="mb-0"><i class="bi bi-list-task"></i> {{ titulo }}</h5>
       </div>
       <div class="card-body">
+        {% if plantilla %}
+          <div class="alert alert-warning d-flex gap-2 align-items-start py-2">
+            <i class="bi bi-clock-history fs-5"></i>
+            <div class="small">
+              <strong>Los cambios aplican desde hoy.</strong>
+              El historial anterior no se modifica: las tareas ya generadas para
+              fechas pasadas conservan su estado, responsable y justificaciones.
+            </div>
+          </div>
+        {% endif %}
+
         <form method="POST" novalidate>
           {{ form.hidden_tag() }}
 
@@ -45,6 +56,13 @@
             {% for e in form.horario.errors %}
               <div class="invalid-feedback">{{ e }}</div>
             {% endfor %}
+            {% if plantilla %}
+              <div class="form-text">
+                Al cambiar el día o el horario se reprograman las tareas
+                <strong>pendientes</strong> de hoy en adelante. Las completadas y las
+                no realizadas quedan como están.
+              </div>
+            {% endif %}
           </div>
 
           <div class="mb-3">
