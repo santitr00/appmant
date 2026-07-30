@@ -11,7 +11,8 @@
 | Backend | Flask 3.0 + Blueprints + SQLAlchemy + Flask-Migrate + openpyxl + xhtml2pdf |
 | Autenticación | Flask-Login + Flask-WTF (CSRF) |
 | Base de datos | MySQL (PyMySQL) — `app_tareas` en localhost:3306 |
-| Servidor (prod) | Waitress (puerto 8080) |
+| Servidor (prod, VPS Linux) | gunicorn + systemd detrás de nginx (`wsgi:app`, `gunicorn.conf.py`) |
+| Servidor (prod, Windows/LAN) | Waitress vía `run.py` con `FLASK_ENV=production` |
 | Servidor (dev) | Flask debug (puerto 5000) |
 | Frontend | Jinja2 + Bootstrap 5 + Bootstrap Icons + FullCalendar.js 6 |
 
