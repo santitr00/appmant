@@ -115,8 +115,11 @@
             </button>
           {% endif %}
           {% if t.estado == 'no_realizada' or t.estado == 'pendiente' or t.justificacion %}
-            <button class="btn btn-outline-warning btn-sm"
-                    onclick="abrirJustificacion({{ t.id }}, {{ t.justificacion.motivo | tojson if t.justificacion else 'null' }}, {{ t.justificacion.tarea_excepcional_id if t.justificacion else 'null' }})">
+            <button class="btn btn-outline-warning btn-sm btn-justificar"
+                    data-id="{{ t.id }}"
+                    data-motivo="{{ t.justificacion.motivo | e if t.justificacion else '' }}"
+                    data-exc-id="{{ t.justificacion.tarea_excepcional_id if t.justificacion else '' }}"
+                    data-tiene-just="{{ 'true' if t.justificacion else 'false' }}">
               <i class="bi bi-chat-left-dots"></i>
               {{ 'Editar justificación' if t.justificacion else 'Justificar' }}
             </button>
@@ -293,6 +296,9 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-outline-danger" id="btnEliminarJust" style="display:none">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
         <button type="button" class="btn btn-warning" id="btnGuardarJust">
           <i class="bi bi-check-lg"></i> Guardar
         </button>
@@ -378,27 +384,33 @@ document.querySelectorAll(".btn-estado").forEach(btn => {
 });
 
 // ── Justificación ──────────────────────────────────────────────────────────
-function abrirJustificacion(id, motivoActual, excIdActual) {
-  justTareaId = id;
-  document.getElementById("motivoText").value = motivoActual || "";
+let justTieneJust = false;
 
-  // Poblar el selector con las excepcionales del día
-  const sel = document.getElementById("excSelect");
-  sel.innerHTML = '<option value="">— Sin vincular —</option>';
-  TAREAS_EXC_DIA.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = t.desc;
-    if (excIdActual && t.id === excIdActual) opt.selected = true;
-    sel.appendChild(opt);
+document.querySelectorAll(".btn-justificar").forEach(btn => {
+  btn.addEventListener("click", () => {
+    justTareaId = btn.dataset.id;
+    justTieneJust = btn.dataset.tieneJust === "true";
+    document.getElementById("motivoText").value = btn.dataset.motivo || "";
+
+    const excIdActual = btn.dataset.excId ? parseInt(btn.dataset.excId) : null;
+    const sel = document.getElementById("excSelect");
+    sel.innerHTML = '<option value="">— Sin vincular —</option>';
+    TAREAS_EXC_DIA.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = t.desc;
+      if (excIdActual && t.id === excIdActual) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    document.getElementById("excSelectWrapper").style.display =
+      TAREAS_EXC_DIA.length > 0 ? "" : "none";
+    document.getElementById("btnEliminarJust").style.display =
+      justTieneJust ? "" : "none";
+
+    modalJust.show();
   });
-
-  // Ocultar el selector si no hay excepcionales
-  document.getElementById("excSelectWrapper").style.display =
-    TAREAS_EXC_DIA.length > 0 ? "" : "none";
-
-  modalJust.show();
-}
+});
 
 document.getElementById("btnGuardarJust").addEventListener("click", async () => {
   const motivo = document.getElementById("motivoText").value.trim();
@@ -418,6 +430,22 @@ document.getElementById("btnGuardarJust").addEventListener("click", async () => 
     location.reload();
   } else {
     alert("Error al guardar la justificación.");
+  }
+});
+
+document.getElementById("btnEliminarJust").addEventListener("click", async () => {
+  if (!confirm("¿Eliminar esta justificación?")) return;
+
+  const fd = new FormData();
+  fd.append("csrf_token", CSRF);
+
+  const res = await fetch(`/tareas/programada/${justTareaId}/justificar/eliminar`,
+                          { method: "POST", body: fd });
+  if (res.ok) {
+    modalJust.hide();
+    location.reload();
+  } else {
+    alert("Error al eliminar la justificación.");
   }
 });
 

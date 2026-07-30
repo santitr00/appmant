@@ -138,6 +138,18 @@ def justificar_programada(id):
     return jsonify({"ok": True})
 
 
+@tareas_bp.route("/programada/<int:id>/justificar/eliminar", methods=["POST"])
+@login_required
+def eliminar_justificacion_programada(id):
+    tarea = TareaProgramada.query.get_or_404(id)
+    if tarea.plantilla.barrio_id != current_user.barrio_id:
+        abort(403)
+    if tarea.justificacion:
+        db.session.delete(tarea.justificacion)
+        db.session.commit()
+    return jsonify({"ok": True})
+
+
 # ── Tareas excepcionales: crear ──────────────────────────────────────────────
 
 @tareas_bp.route("/excepcional/nueva", methods=["GET", "POST"])
