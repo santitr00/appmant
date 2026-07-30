@@ -104,11 +104,21 @@ d:\ProyectoMantenimiento\
 - Listar plantillas del barrio con estado activa/inactiva
 - Crear nueva plantilla (nombre, descripción, frecuencia, día semana, horario)
 - Editar plantilla existente
+- **Reprogramación día/horario con vigencia desde hoy** (ver punto 5)
+- Validación: una plantilla semanal exige día de la semana
 - Toggle activar/desactivar (sin borrar)
 
 ### 5. Generación de tareas (`app/tareas/generador.py`)
 - `generar_tareas_para_fecha(barrio_id, fecha)`: genera tareas del día sin duplicados
 - `generar_tareas_para_semana(barrio_id, fecha_inicio)`: genera para 7 días
+- `sincronizar_tareas_futuras(plantilla)`: aplica el día/horario editado **de hoy en adelante**
+  - fechas anteriores a hoy: **nunca** se tocan
+  - tareas completadas / no_realizadas: **nunca** se tocan, aunque sean futuras
+  - pendientes futuras que siguen correspondiendo: se les actualiza el horario
+  - pendientes futuras que ya no corresponden (cambió el día o la frecuencia): se eliminan
+  - se rellenan los días nuevos dentro del rango ya generado, para que el cambio
+    se vea de inmediato en el calendario diario y mensual
+  - solo se dispara si cambió frecuencia, día o horario
 - Se ejecuta **automáticamente** al cargar el calendario
 - Se puede ejecutar manualmente con el botón "Regenerar tareas del día"
 

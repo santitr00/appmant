@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, abort
+from flask import render_template, redirect, url_for, flash, abort, request
 from flask_login import login_required, current_user
 
 from app import db
@@ -6,6 +6,7 @@ from app.plantillas import plantillas_bp
 from app.plantillas.forms import PlantillaForm
 from app.models import PlantillaTarea, Empleado
 from app.auth.decorators import solo_admin
+from app.tareas.generador import sincronizar_tareas_futuras
 
 
 def _choices_empleados(barrio_id):
@@ -68,10 +69,15 @@ def editar(id):
     form = PlantillaForm(obj=plantilla)
     form.empleado_id.choices = _choices_empleados(current_user.barrio_id)
 
-    if plantilla.dia_semana is not None:
+    # Solo en GET: en POST el valor enviado debe prevalecer, si no el cambio de día
+    # quedaría pisado por el valor guardado.
+    if request.method == "GET" and plantilla.dia_semana is not None:
         form.dia_semana.data = str(plantilla.dia_semana)
 
     if form.validate_on_submit():
+        # Configuración anterior, para saber si hay que reprogramar lo que viene.
+        antes = (plantilla.frecuencia, plantilla.dia_semana, plantilla.horario)
+
         plantilla.nombre = form.nombre.data.strip()
         plantilla.descripcion = form.descripcion.data
         plantilla.frecuencia = form.frecuencia.data
@@ -81,7 +87,20 @@ def editar(id):
         plantilla.activa = form.activa.data
         plantilla.empleado_id = form.empleado_id.data or None
         db.session.commit()
+
+        despues = (plantilla.frecuencia, plantilla.dia_semana, plantilla.horario)
         flash(f'Plantilla "{plantilla.nombre}" actualizada.', "success")
+
+        if antes != despues:
+            r = sincronizar_tareas_futuras(plantilla)
+            flash(
+                "Reprogramación aplicada desde hoy: "
+                f'{r["actualizadas"]} tarea(s) actualizada(s), '
+                f'{r["creadas"]} creada(s), {r["eliminadas"]} pendiente(s) eliminada(s). '
+                "El historial anterior quedó intacto.",
+                "info",
+            )
+
         return redirect(url_for("plantillas.index"))
 
     return render_template(

@@ -1,0 +1,27 @@
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Base de datos local / dumps
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+
+# Logs
+*.log
+
+# Editores / SO
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
